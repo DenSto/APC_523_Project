@@ -1,0 +1,25 @@
+IO = input.o readinfo.o passinfo.o check.o 
+IOTEST = input.o readinfo.o passinfo.o
+DOM = domain.o 
+UTIL = RNG.o
+PUSH = boris.o
+GRID = grid.o utils.o
+PART = particle.o particle_handler.o deposit.o
+BC_PART = bc_p_MPI.o bc_p_periodic.o bc_p_reflecting.o
+BC = particles_boundary.o particle_bc_factory.o
+
+IOOBJ = $(addprefix ./IO/, $(IO))
+IOTESTOBJ = $(addprefix ./IO/, $(IOTEST))
+DOMOBJ = $(addprefix ./domain/, $(DOM))
+UTILSOBJ = $(addprefix ./utils/, $(UTIL))
+PUSHOBJ = $(addprefix ./pusher/, $(PUSH))
+GRIDOBJ = $(addprefix ./grid/, $(GRID))
+PARTOBJ = $(addprefix ./particles/, $(PART))
+BOUNDARYOBJ = $(addprefix ./boundaries/, $(BC) \
+		$(addprefix b_particles/, $(BC_PART)))
+
+
+OBJ = $(IOOBJ) $(DOMOBJ) $(UTILSOBJ) $(PUSHOBJ) $(BOUNDARYOBJ) $(GRIDOBJ) $(PARTOBJ) main.o
+OBJTEST = $(IOOBJ) $(DOMOBJ) $(UTILSOBJ) $(PUSHOBJ) $(BOUNDARYOBJ) $(GRIDOBJ) $(PARTOBJ) 
+OBJ_PAR = $(OBJ:.o=_par.o)
+OBJ_PIC = $(OBJ:.o=_pic.o)
