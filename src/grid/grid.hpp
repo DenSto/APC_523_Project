@@ -29,6 +29,10 @@ typedef struct PartCouple{
   PartProp pp[3][3][3];
 } PartCouple;
 
+inline int intFloor(double x){
+  return (int)(x + 10000000) - 10000000;
+}
+
 class Grid {
 
 public:
@@ -36,20 +40,20 @@ public:
   virtual ~Grid(); 
 
   inline int getCellID(double x, double y, double z){
-    int ix = (int) ((x - x0_) * idx_);
-    int iy = (int) ((y - y0_) * idy_);
-    int iz = (int) ((z - z0_) * idz_);
+    int ix = intFloor((x - x0_) * idx_);
+    int iy = intFloor((y - y0_) * idy_);
+    int iz = intFloor((z - z0_) * idz_);
     return (ny_*nz_)*ix + nz_*iy + iz;
   }
 
   inline int getCellID_wGhost(double x, double y, double z){
-    int ix = (int) ((x - x0_) * idx_);
+    int ix = intFloor((x - x0_) * idx_);
     if(ix < 0 || ix >= nx_) return -1;
 
-    int iy = (int) ((y - y0_) * idy_);
+    int iy = intFloor((y - y0_) * idy_);
     if(iy < 0 || iy >= ny_) return -2;
 
-    int iz = (int) ((z - z0_) * idz_);
+    int iz = intFloor((z - z0_) * idz_);
     if(iz < 0 || iz >= nz_) return -3;
 
     return (ny_*nz_)*ix + nz_*iy + iz;

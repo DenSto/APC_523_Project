@@ -62,13 +62,12 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
     int ispec = 0; // temporaty counter  
     double cden = dens[0]; // cummulative density fraction
     double vth;
-    for(long ip=0; ip < npart;ip++){
+    for(long ip=0; ip < npart && ip < 1; ip++){
       Particle p = new_particle();
       if(ip >= cden*npart){
         ispec += 1;
         cden  += dens[ispec];
       }
-      assert(ispec<nspec);
       p.q = charge[ispec]; // super particle charge
       p.m = mass[ispec];   // super particle mass
       p.isTestParticle = test[ispec];
@@ -123,8 +122,11 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
 void Particle_Handler::Push(double dt){
 #ifdef PART_IN_CELL
   for(long i = 0; i < ncell_; i++){
-    for(long ip=0;ip<parts_[i].size();ip++){
-        pusher_->Step(&(parts_[i][ip]),&(parts_[i][ip].field),dt);
+    long size = (long) parts_[i].size();
+#pragma simd
+    for(long ip=0;ip < size; ip++){
+        Particle *p = &parts_[i][ip];
+        pusher_->Step(p,&p->field,dt);
     }
   }
 #else
@@ -172,7 +174,9 @@ void Particle_Handler::InterpolateEB(Grid* grid){
 #ifdef PART_IN_CELL
   for (long j = 0; j < ncell_; j++){
     grid->getCoupleID(j,&cp);
-    for (long i=0; i< parts_[j].size(); i++) {
+    long size = (long) parts_[j].size();
+#pragma vector
+    for (long i=0; i < size; i++) {
       //Get position of particle.
       pos[0] = parts_[j][i].x[0];
       pos[1] = parts_[j][i].x[1];
@@ -214,8 +218,6 @@ void Particle_Handler::depositRhoJ(Grid *grid, bool depositRho, Domain* domain, 
 
   Couple cp;
 
-  int is,js,ks;
-  int ic,jc,kc;
 
   //Get lengths of grid cells.
   grid->getInvSpacing(icell);
@@ -226,24 +228,28 @@ void Particle_Handler::depositRhoJ(Grid *grid, bool depositRho, Domain* domain, 
 
 #ifdef PART_IN_CELL
   for (long n=0; n < ncell_ ; n++) {
-    for (long ip=0; ip<parts_[n].size(); ip++) {
-      Particle p = parts_[n][ip];
-      assert(!p.isGhost);
+    long size = (long) parts_[n].size();
+#pragma vector
+    for (long ip=0; ip< size; ip++) {
+      int is,js,ks;
+      int ic,jc,kc;
+      Particle *p = &parts_[n][ip];
+     // assert(!p.isGhost);
   
       //Get position of particle.
-      pos[0] = p.x[0];
-      pos[1] = p.x[1];
-      pos[2] = p.x[2];
+      pos[0] = p->x[0];
+      pos[1] = p->x[1];
+      pos[2] = p->x[2];
 
       getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
 
       for( int i = 0; i < 3; i++){
         for( int j = 0; j < 3; j++){
           for( int k = 0; k < 3; k++){
-            cur.d = p.m*weight[i][j][k];
-            cur.jx = p.q*p.v[0]*weight[i][j][k];
-            cur.jy = p.q*p.v[1]*weight[i][j][k];
-            cur.jz = p.q*p.v[2]*weight[i][j][k];
+            cur.d = p->m*weight[i][j][k];
+            cur.jx = p->q*p->v[0]*weight[i][j][k];
+            cur.jy = p->q*p->v[1]*weight[i][j][k];
+            cur.jz = p->q*p->v[2]*weight[i][j][k];
             grid->addPartProp(is + i, js + j, ks + k, cur);
           }
         }
@@ -352,7 +358,8 @@ double Particle_Handler::computeCFLTimestep(Grid* grid){
   grid->getSpacing(dx);
 #ifdef PART_IN_CELL
   for (int i= 0; i<ncell_; i++) {
-    for (int ip= 0; ip< parts_[i].size(); ip++) {
+    long size = (long) parts_[i].size();
+    for (int ip= 0; ip < size; ip++) {
       for(int j = 0; j < 3; j++){
         v = parts_[i][ip].v[j];
         if(v*v > 0){
@@ -410,7 +417,9 @@ void Particle_Handler::updateCellLists(Grid *grid,short justGhosts){
     for(std::vector<Particle>::iterator iter = parts_[i].begin(); iter != parts_[i].end();){
       long id = grid->getCellID_wGhost(iter->x[0],iter->x[1],iter->x[2]);
       id = id < 0 ? ncell_ : id;
+        if(id == ncell_) printf("sharn\n");
       if(id != i){ // particle is not in it's cell anymore
+        if(id == ncell_) printf("papp\n");
 
         // swap pop
         Particle pt = *iter;
@@ -518,12 +527,14 @@ void Particle_Handler::outputParticles(const char* basename,long step, Input_Inf
   FILE *pout;
 #ifdef PART_IN_CELL
   for(int i =0; i<ncell_;i++){
-    for(std::vector<Particle>::iterator iter = parts_[i].begin();iter!=parts_[i].end();++iter){
+    long size = (long) parts_[i].size();
+    for (int ip= 0; ip < size; ip++) {
+      Particle *iter = &parts_[i][ip];
       if(iter->my_id < outputCount_){
         sprintf(fname,"%strack_%d_%ld.dat",basename,iter->initRank,iter->my_id);  
                         if(debug>1)fprintf(stderr,"    track file name %s\n",fname);
         pout=fopen(fname,"a");
-        assert(pout != NULL);
+        //assert(pout != NULL);
         fprintf(pout,"%e %.15e %.15e %.15e %.15e %.15e %.15e\n",t,
           iter->x[0],iter->x[1],iter->x[2],
           iter->v[0],iter->v[1],iter->v[2]);

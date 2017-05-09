@@ -186,6 +186,8 @@ int main(int argc, char *argv[]){
 		tv_prev = tv_curr;
        if(rank==0 && ti%1==0)fprintf(stderr,"ti=%d\t\t t=%f ps steptime=%e s\n",ti,time_phys*UNIT_TIME,step_time);   
 
+
+#ifndef PART_IN_CELL
        if(input_info->nstep_sort > 0 && ti % input_info->nstep_sort == 0){
          switch(sort){
           case 0 : break;
@@ -198,8 +200,9 @@ int main(int argc, char *argv[]){
             part_handler->CountingSortParticles(grid);
             break;
 
-        }
+         }
        }
+#endif
 		
        // Interpolate fields from grid to particle
        part_handler->InterpolateEB(grid);

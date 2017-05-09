@@ -26,14 +26,10 @@ int Boris::Step(Particle* part, Field_part* field, double dt){
   vz = part->v[2];
 
   q = part->q;
-  if(debug>3)fprintf(stderr,"Charge inside = %f\n",q);
-
   m = part->m;
-  if(debug>3)fprintf(stderr,"Mass inside = %f\n",m);
 
   q_p = (0.5 * dt * q)/m; 
   q_p *= UNIT_ACC; // multiply unit of acceleration
-  if(debug>3)fprintf(stderr,"q_p inside = %f\n",q_p);
 
   ex = field->e1;
   ey = field->e2;
@@ -96,15 +92,6 @@ int Boris::Step(Particle* part, Field_part* field, double dt){
   part->v[0] = vx_new;
   part->v[1] = vy_new;
   part->v[2] = vz_new;
-
-  if(debug>3){
-      fprintf(stderr,"*************************\n");
-      fprintf(stderr,"old: x=%f,y=%f,x=%f,vx=%f,vy=%f,vz=%f\n",
-               x,y,z,vx,vy,vz);
-      fprintf(stderr,"new: x=%f,y=%f,x=%f,vx=%f,vy=%f,vz=%f\n",
-               x_new,y_new,z_new,vx_new,vy_new,vz_new);
-      fprintf(stderr,"*************************\n");
-  }
 
   return 1;
 }
