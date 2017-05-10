@@ -4,7 +4,7 @@ DOM = domain.o
 UTIL = RNG.o
 PUSH = boris.o
 GRID = grid.o utils.o
-PART = particle.o particle_handler.o deposit.o
+PART = particle.o particle_handler.o
 BC_PART = bc_p_MPI.o bc_p_periodic.o bc_p_reflecting.o
 BC = particles_boundary.o particle_bc_factory.o
 

@@ -16,7 +16,7 @@ class BC_P_MPI : public BC_Particle {
 	public:
 		BC_P_MPI(Domain* domain, int dim_Index, short isLeft, std::string type);
 		~BC_P_MPI();
-		void computeParticleBCs(std::vector<Particle> *pl);
+		int computeParticleBCs(std::vector<Particle> *pl);
 		int completeBC(std::vector<Particle> *pl);
 	private:
 		int particle_BC(Particle* p);
@@ -196,7 +196,6 @@ void BC_P_MPI::packParticle(Particle* p){
 	sendBuf_.push_back(p->v[0]);
 	sendBuf_.push_back(p->v[1]);
 	sendBuf_.push_back(p->v[2]);
-	sendBuf_.push_back(p->gamma);
 	sendBuf_.push_back((double)p->my_id);
 	sendBuf_.push_back((double)p->initRank);
 	sendBuf_.push_back((double)p->type);
@@ -212,7 +211,6 @@ Particle BC_P_MPI::unpackParticle(int offset){
 	p.v[0] = recvBuf_[i++];
 	p.v[1] = recvBuf_[i++];
 	p.v[2] = recvBuf_[i++];
-	p.gamma= recvBuf_[i++];
 	p.my_id = (long) recvBuf_[i++];
 	p.initRank = (int) recvBuf_[i++];
 	p.type = (short) recvBuf_[i++];

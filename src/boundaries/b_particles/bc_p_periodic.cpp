@@ -11,7 +11,7 @@ class BC_P_Periodic : public BC_Particle {
 	public:
 		BC_P_Periodic(Domain* domain, int dim_Index, short isRight, std::string type);
 		~BC_P_Periodic();
-		void computeParticleBCs(std::vector<Particle> *pl);
+		int computeParticleBCs(std::vector<Particle> *pl);
 		int completeBC(std::vector<Particle> *pl);
 	private:
 		int particle_BC(Particle* p);
@@ -49,14 +49,14 @@ int BC_P_Periodic::completeBC(std::vector<Particle> *pl){
 	return 0;
 }
 
-int BC_P_Periodic::particle_BC(Particle* p){
+inline int BC_P_Periodic::particle_BC(Particle* p){
 #ifdef USE_GHOST
 // Non-persistent particles (create new particles, delete the ones in ghost cells
 // at the end of the time step.
 	if(p->x[dim_index_] < xMin_ && !isRight_){ //left boundary
 		Particle newP = *p;
                 newP.x[dim_index_] += (xMax_-xMin_);
-		assert(newP.x[dim_index_] >= xMin_);
+//		assert(newP.x[dim_index_] >= xMin_);
 		ghostBuf_.push_back(newP);
 		p->isGhost = 1;
 		return 1;
@@ -65,7 +65,7 @@ int BC_P_Periodic::particle_BC(Particle* p){
 	if(p->x[dim_index_] > xMax_ && isRight_){ // right boundary
 		Particle newP = *p;
 		newP.x[dim_index_] -= (xMax_-xMin_);
-		assert(newP.x[dim_index_] <= xMax_);
+//		assert(newP.x[dim_index_] <= xMax_);
 		ghostBuf_.push_back(newP);
 		p->isGhost = 1;
 		return 1;
@@ -76,15 +76,26 @@ int BC_P_Periodic::particle_BC(Particle* p){
 // Persistent particles (don't create new ones, but move the original around)
 	if(p->x[dim_index_] < xMin_ && !isRight_){
 		p->x[dim_index_] += (xMax_-xMin_);
-	  assert(p->x[dim_index_] >= xMin_);   
+	  //assert(p->x[dim_index_] >= xMin_);   
   }
 
 	if(p->x[dim_index_] > xMax_ && isRight_){
 		p->x[dim_index_] -= (xMax_-xMin_);
-	  assert(p->x[dim_index_] <= xMax_);   
+	  //assert(p->x[dim_index_] <= xMax_);   
   }
 	return 0;
 #endif
+}
+
+// cycle through all particles
+int BC_P_Periodic::computeParticleBCs(std::vector<Particle> *pl) {
+  long size = pl->size();
+#pragma simd
+  for(long i = 0; i < size; i++){
+    (*pl)[i].isGhost = (*pl)[i].isGhost || 
+      particle_BC(&(*pl)[i]);
+  }
+  return completeBC(pl);
 }
 
 // Registers bounary condition into BC_Factory dictionary

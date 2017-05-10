@@ -1,9 +1,10 @@
-CC = g++
+CC = icc
 MPICC = mpic++
 MPIFLAGS = -DUSE_MPI=0
 
 CFLAGS= -g  -Wall 
-CFLAGS= -O3
+CFLAGS= -O3 -ipo -xhost -qopt-report=5 -qopt-report-phase=vec -xCORE-AVX2
+#CFLAGS= -O3
 
 include Makefile.obj
 
@@ -53,6 +54,8 @@ $(LCONFIG_LIB):
 clean:
 	rm -f $(PROGRAM) $(PROGRAM_PAR) $(PROGRAM_PIC) $(OBJ) $(OBJ_PAR) $(OBJ_PIC) .depend
 
+fullclean: clean
+	rm -rf ../libconfig-1.5
 run_tests:
 	cd ../test; \
 	make; \

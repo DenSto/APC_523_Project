@@ -15,7 +15,6 @@
 #include "particle_utils.hpp"
 #include "../pusher/pusher.hpp"
 #include "../boundaries/particles_boundary.hpp"
-#include "deposit.hpp"
 
 class Particle_Handler {
 public:

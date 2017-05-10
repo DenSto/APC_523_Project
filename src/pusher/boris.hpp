@@ -6,7 +6,7 @@ class Boris : public Pusher {
     public:
         Boris();
         ~Boris();
-        int Step(Particle *part, Field_part *field, double dt);
+        void Step(double *x, double *v, double q_m, Field_part field, double dt, double* ret);
 		
 };
 

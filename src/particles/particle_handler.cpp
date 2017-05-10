@@ -51,7 +51,6 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
   double *mass   = input_info->mass_ratio;
   double *charge = input_info->charge_ratio;
   double *dens   = input_info->dens_frac; 
-  int *test   = input_info->isTestParticle; 
 
   pa_= (int*) malloc(sizeof(int) *(ncell_+1));
   pa_save_ = (int*) malloc(sizeof(int) *( ncell_ +1));
@@ -62,7 +61,7 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
     int ispec = 0; // temporaty counter  
     double cden = dens[0]; // cummulative density fraction
     double vth;
-    for(long ip=0; ip < npart && ip < 1; ip++){
+    for(long ip=0; ip < npart; ip++){
       Particle p = new_particle();
       if(ip >= cden*npart){
         ispec += 1;
@@ -70,10 +69,7 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
       }
       p.q = charge[ispec]; // super particle charge
       p.m = mass[ispec];   // super particle mass
-      p.isTestParticle = test[ispec];
       p.type = ispec;
-
-      if(debug>3)fprintf(stderr,"charge=%f\n",p.q);
 
       vth=UNIT_VTH*sqrt(input_info->temp[ispec]/p.m);
 
@@ -84,8 +80,6 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
       p.v[0]=rng->getGaussian(0.0,vth);
       p.v[1]=rng->getGaussian(0.0,vth);
       p.v[2]=rng->getGaussian(0.0,vth);
-
-      p.gamma = sqrt(1 - p.v[0]*p.v[0] - p.v[1]*p.v[1] - p.v[2]*p.v[2]);
 
       p.my_id=ip;
       p.initRank=rank_MPI;
@@ -125,13 +119,30 @@ void Particle_Handler::Push(double dt){
     long size = (long) parts_[i].size();
 #pragma simd
     for(long ip=0;ip < size; ip++){
-        Particle *p = &parts_[i][ip];
-        pusher_->Step(p,&p->field,dt);
+      double qom = parts_[i][ip].q/parts_[i][ip].m;
+      double ret[6];
+      pusher_->Step(parts_[i][ip].x,parts_[i][ip].v,qom, parts_[i][ip].field,dt,ret);
+
+      parts_[i][ip].x[0] = ret[0];
+      parts_[i][ip].x[1] = ret[1];
+      parts_[i][ip].x[2] = ret[2];
+      parts_[i][ip].v[0] = ret[3];
+      parts_[i][ip].v[1] = ret[4];
+      parts_[i][ip].v[2] = ret[5];
     }
   }
 #else
   for(long ip=0;ip<np_;ip++){
-    pusher_->Step(&(parts_[ip]),&(parts_[ip].field),dt);
+    double qom = parts_[ip].q/parts_[ip].m;
+    double ret[6];
+    pusher_->Step(parts_[ip].x,parts_[ip].v,qom, parts_[ip].field,dt,ret);
+
+    parts_[ip].x[0] = ret[0];
+    parts_[ip].x[1] = ret[1];
+    parts_[ip].x[2] = ret[2];
+    parts_[ip].v[0] = ret[3];
+    parts_[ip].v[1] = ret[4];
+    parts_[ip].v[2] = ret[5];
   }
 #endif
 }
@@ -258,6 +269,8 @@ void Particle_Handler::depositRhoJ(Grid *grid, bool depositRho, Domain* domain, 
   }
 #else
   for (long ip=0; ip<np_; ip++) {
+    int is,js,ks;
+    int ic,jc,kc;
     assert(!parts_[ip].isGhost);
   
     //Get position of particle.
@@ -417,10 +430,7 @@ void Particle_Handler::updateCellLists(Grid *grid,short justGhosts){
     for(std::vector<Particle>::iterator iter = parts_[i].begin(); iter != parts_[i].end();){
       long id = grid->getCellID_wGhost(iter->x[0],iter->x[1],iter->x[2]);
       id = id < 0 ? ncell_ : id;
-        if(id == ncell_) printf("sharn\n");
       if(id != i){ // particle is not in it's cell anymore
-        if(id == ncell_) printf("papp\n");
-
         // swap pop
         Particle pt = *iter;
         std::swap(*iter, parts_[i].back());

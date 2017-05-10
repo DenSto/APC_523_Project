@@ -8,7 +8,7 @@ class BC_P_Reflecting : public BC_Particle {
 	public:
 		BC_P_Reflecting(Domain* domain, int dim_Index, short isRight, std::string type);
 		~BC_P_Reflecting();
-		void computeParticleBCs(std::vector<Particle> *pl);
+		int computeParticleBCs(std::vector<Particle> *pl);
 		int completeBC(std::vector<Particle> *pl);
 	private:
 		int particle_BC(Particle* p);
@@ -40,7 +40,7 @@ int BC_P_Reflecting::completeBC(std::vector<Particle> *pl){
 }
 
 
-int BC_P_Reflecting::particle_BC(Particle* p){
+inline int BC_P_Reflecting::particle_BC(Particle* p){
 	if(p->x[dim_index_] > xMax_ && isRight_){
 		p->x[dim_index_] = 2.0*xMax_ - p->x[dim_index_];
 		p->v[dim_index_]=-p->v[dim_index_];
@@ -50,6 +50,17 @@ int BC_P_Reflecting::particle_BC(Particle* p){
 		p->v[dim_index_]=-p->v[dim_index_];
 	}
 	return 0;
+}
+
+// cycle through all particles
+int BC_P_Reflecting::computeParticleBCs(std::vector<Particle> *pl) {
+  long size = pl->size();
+#pragma simd
+  for(long i = 0; i < size; i++){
+    (*pl)[i].isGhost = (*pl)[i].isGhost || 
+      particle_BC(&(*pl)[i]);
+  }
+  return completeBC(pl);
 }
 
 // Registers bounary condition into BC_Factory dictionary

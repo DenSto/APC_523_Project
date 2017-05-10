@@ -6,7 +6,7 @@
 class Pusher {
     public:
         virtual ~Pusher() {};
-        virtual int Step(Particle* part, Field_part *field, double dt) = 0;
+        virtual void Step(double *x, double *v, double q_m, Field_part field, double dt, double* ret) = 0;
 };
 
 

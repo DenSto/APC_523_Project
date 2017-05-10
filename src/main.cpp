@@ -38,6 +38,38 @@
     #include<time.h>
 #endif
 
+
+static void stopwatch(short lap){
+  static struct timeval tv_prev, tv_curr;
+  static FILE *fp = fopen("timing.dat","w");
+  static short init = 1;
+
+  assert(fp != NULL);
+
+  if(init){
+    init = 0;
+    gettimeofday(&tv_prev,NULL);
+#ifdef PART_IN_CELL
+    fprintf(fp,"#[1]Output  [2]Interp [3]Push [4]Cell [5]Bound [6]Deposit\n");
+#else
+    fprintf(fp,"#[1]Output  [2]Interp [3]Push [5]Bound [6]Deposit\n");
+#endif
+    return;
+  }
+
+  gettimeofday(&tv_curr,NULL);
+  double time = (double)(tv_curr.tv_sec - tv_prev.tv_sec) +
+      		       1.0e-6*(double)(tv_curr.tv_usec - tv_prev.tv_usec);
+  tv_prev = tv_curr;
+  fprintf(fp,"%f  ", time);
+  if(lap){ 
+    fprintf(fp,"\n");
+    fflush(fp);
+  }
+  return;
+}
+
+
 int main(int argc, char *argv[]){
 
     int size,rank=0;
@@ -165,13 +197,15 @@ int main(int argc, char *argv[]){
     if(debug) fprintf(stderr,"rank=%d: Finish preparing time step\n",rank);
 
 
-	struct timeval tv_curr, tv_prev;
-	double step_time;	
+    struct timeval tv_curr, tv_prev;
+    double step_time;	
 
-	gettimeofday(&tv_prev,NULL);
+    gettimeofday(&tv_prev,NULL);
 
-	std::string inputname = argv[1];
-	std::string dir = inputname.substr(0,inputname.find_last_of('/')+1);
+    std::string inputname = argv[1];
+    std::string dir = inputname.substr(0,inputname.find_last_of('/')+1);
+
+    stopwatch(0);
 
     /***************************************************************************/
     /* Advance time step                                                       */
@@ -204,26 +238,32 @@ int main(int argc, char *argv[]){
        }
 #endif
 		
+    stopwatch(0);
        // Interpolate fields from grid to particle
        part_handler->InterpolateEB(grid);
 
+    stopwatch(0);
        /* push particles ***********************/
        part_handler->Push(dt_phys);
 
        // Pass particle across MPI boundaries, or implement physical boundary conditions
        // All particles are in physical cells, no particle lives in ghost cell
 #ifdef PART_IN_CELL
+    stopwatch(0);
        part_handler->updateCellLists(grid,0);
 #endif
+    stopwatch(0);
        part_handler->executeParticleBoundaryConditions(grid);
 
        // remove any particles left in the ghost cells
        part_handler->clearGhosts();
 
        // only deposit particles in physical cells
+    stopwatch(0);
        part_handler->depositRhoJ(grid,true,domain,input_info);
 
 
+    stopwatch(1);
        time_phys += dt_phys;
 
        part_handler->outputParticles(dir.c_str(),ti+1,input_info); 

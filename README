@@ -1,0 +1,4 @@
+FIXES
+- better performance on Boris Push
+- UpdateCell cost cancelled by Boundary savings
+- Numerous loop vectorizations (e.g., std::vector<>.size())
