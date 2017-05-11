@@ -133,7 +133,7 @@ inline void getwei_TSC(double L0[3], double idx[3], double x1, double x2, double
 }
 
 
-inline void interpolateFields(Couple cp, double weight[3][3][3],Field_part *field){
+inline void interpolateFields(Couple *cp, double weight[3][3][3],Field_part *field){
   int i,j,k;
 
   field->e1=0.0;
@@ -150,13 +150,13 @@ inline void interpolateFields(Couple cp, double weight[3][3][3],Field_part *fiel
     for(j =0; j < 3; j++){
       for(k =0; k < 3; k++){
         totalwei+=weight[i][j][k];
-        field->e1+=weight[i][j][k]*cp.Ex[i][j][k];
-        field->e2+=weight[i][j][k]*cp.Ey[i][j][k];
-        field->e3+=weight[i][j][k]*cp.Ez[i][j][k];
+        field->e1+=weight[i][j][k]*cp->Ex[i][j][k];
+        field->e2+=weight[i][j][k]*cp->Ey[i][j][k];
+        field->e3+=weight[i][j][k]*cp->Ez[i][j][k];
 
-        field->b1+=weight[i][j][k]*cp.Bx[i][j][k];
-        field->b2+=weight[i][j][k]*cp.By[i][j][k];
-        field->b3+=weight[i][j][k]*cp.Bz[i][j][k];
+        field->b1+=weight[i][j][k]*cp->Bx[i][j][k];
+        field->b2+=weight[i][j][k]*cp->By[i][j][k];
+        field->b3+=weight[i][j][k]*cp->Bz[i][j][k];
       }
     }
   }
@@ -221,11 +221,10 @@ inline void depositRho(Grid* grid, std::vector<Particle>* nparts){
     for(ip = 0; ip < np; ip += LVEC){
       for(n = 0; n < MIN(LVEC,np-ip); n++){
         nn= ip + n;
-        Particle p = nparts[iter][nn];
         //wq0 = p.q*invvol;
-        x = (p.x[0]-L0[0])*idx[0];
-        y = (p.x[1]-L0[0])*idx[1];
-        z = (p.x[2]-L0[2])*idx[2];
+        x = (nparts[iter][nn].x[0]-L0[0])*idx[0];
+        y = (nparts[iter][nn].x[1]-L0[0])*idx[1];
+        z = (nparts[iter][nn].x[2]-L0[2])*idx[2];
 
         j = (int)(x + 100000.0) - 100000;
         k = (int)(y + 100000.0) - 100000;
@@ -265,9 +264,10 @@ inline void depositRho(Grid* grid, std::vector<Particle>* nparts){
           wq0+= www[8*n + nv];
           wq0+= ww0[8*n + nv];
         }
+	double fac = nparts[iter][nn].q / wq0;
         for(nv = 0; nv < 8; nv++){
-          www[8*n + nv] /= wq0;
-          ww0[8*n + nv] /= wq0;
+          www[8*n + nv] *= fac;
+          ww0[8*n + nv] *= fac;
         }
       }
       j += nghost; k += nghost; l += nghost;
@@ -278,7 +278,7 @@ inline void depositRho(Grid* grid, std::vector<Particle>* nparts){
           ww=www[8*n + nv];
           rhocells[8*(ICELL[n]-1) + nv] += ww*sz0[n];
           rhocells[8*(ICELL[n]  ) + nv] += ww*sz1[n];
-          rhocells[8*(ICELL[n]  ) + nv] += ww*sz2[n];
+          rhocells[8*(ICELL[n]+1) + nv] += ww*sz2[n];
         }
         for(nv = -1; nv <= 1; nv++){
             rho[j][k][l+nv] += ww0[8*n + nv + 1];

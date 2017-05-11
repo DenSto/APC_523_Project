@@ -194,7 +194,7 @@ void Particle_Handler::InterpolateEB(Grid* grid){
       pos[2] = parts_[j][i].x[2];
 
       getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
-      interpolateFields(cp,weight,&parts_[j][i].field);
+      interpolateFields(&cp,weight,&parts_[j][i].field);
     }
   }
 #else
@@ -213,7 +213,7 @@ void Particle_Handler::InterpolateEB(Grid* grid){
       cellID=pID;
       grid->getCouple(is,js,ks,&cp);
     }
-    interpolateFields(cp,weight,&parts_[i].field);
+    interpolateFields(&cp,weight,&parts_[i].field);
   }
 #endif
 }
