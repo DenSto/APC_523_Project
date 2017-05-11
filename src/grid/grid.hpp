@@ -67,9 +67,9 @@ public:
   void addPartProp(int i, int j, int k, PartProp pp);
 
   void getnxyz(int* nxyz);
+  void getL0(double* L0);
   void getSpacing(double* space);
   void getInvSpacing(double* space);
-  void getL0(double* L0);
 
   void constE(double x, double y, double z);
   void constB(double x, double y, double z);
@@ -83,6 +83,7 @@ public:
   double getidx() {return idx_;};
   double getidy() {return idy_;};
   double getidz() {return idz_;};
+  double ***getRho() {return rho_;};
 
   void initializeFields(Input_Info_t* input);
 
@@ -98,6 +99,8 @@ protected:
   double ***Bx_;
   double ***By_;
   double ***Bz_;
+  
+  double ***rho_;
 
   PartProp ***pp_;
 

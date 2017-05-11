@@ -218,12 +218,21 @@ void Particle_Handler::InterpolateEB(Grid* grid){
 #endif
 }
 
-void Particle_Handler::depositRhoJ(Grid *grid, bool depositRho, Domain* domain, Input_Info_t* input_info){
+void Particle_Handler::depositRhoJ(Grid *grid){
   int nxyz[3];
   double pos[3]; //Vector of position of particle.
   double icell[3]; //Vector of inverse lengths of unit cell.
   double L0[3]; //Vector of lengths of unit cell.
   double weight[3][3][3];
+
+  if(useVecDeposition){
+#ifdef PART_IN_CELL
+    depositRho(grid,parts_);
+#else
+    depositRho(grid,&parts_);
+#endif
+    return;
+  }
 
   int pID, cellID = -1;
 
@@ -235,17 +244,14 @@ void Particle_Handler::depositRhoJ(Grid *grid, bool depositRho, Domain* domain, 
   grid->getL0(L0);
 
   PartProp cur;
-  //int count =0;
 
 #ifdef PART_IN_CELL
   for (long n=0; n < ncell_ ; n++) {
     long size = (long) parts_[n].size();
-#pragma vector
     for (long ip=0; ip< size; ip++) {
       int is,js,ks;
       int ic,jc,kc;
       Particle *p = &parts_[n][ip];
-     // assert(!p.isGhost);
   
       //Get position of particle.
       pos[0] = p->x[0];
@@ -258,9 +264,9 @@ void Particle_Handler::depositRhoJ(Grid *grid, bool depositRho, Domain* domain, 
         for( int j = 0; j < 3; j++){
           for( int k = 0; k < 3; k++){
             cur.d = p->m*weight[i][j][k];
-            cur.jx = p->q*p->v[0]*weight[i][j][k];
-            cur.jy = p->q*p->v[1]*weight[i][j][k];
-            cur.jz = p->q*p->v[2]*weight[i][j][k];
+  //        cur.jx = p->q*p->v[0]*weight[i][j][k];
+  //        cur.jy = p->q*p->v[1]*weight[i][j][k];
+  //        cur.jz = p->q*p->v[2]*weight[i][j][k];
             grid->addPartProp(is + i, js + j, ks + k, cur);
           }
         }

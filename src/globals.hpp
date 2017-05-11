@@ -3,6 +3,8 @@
 
 
 #define SQR(x) ((x)*(x))
+#define MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
 
 typedef struct vector_t{
 	double x1, x2, x3;
@@ -41,6 +43,7 @@ enum fieldID {E_X, E_Y,E_Z, B_X, B_Y, B_Z};
 
 #ifdef MAIN_CPP
 int rank_MPI, size_MPI;
+int useVecDeposition;
 int debug; // printf debug flag
 double time_phys; // current physical time in simulation
 double dt_phys; // current physical time step
@@ -48,6 +51,7 @@ double dt_phys; // current physical time step
 #else // MAIN_CPP
 
 extern int rank_MPI, size_MPI;
+extern int useVecDeposition;
 extern int debug;
 extern double time_phys, dt_phys;
 

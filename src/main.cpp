@@ -95,21 +95,36 @@ int main(int argc, char *argv[]){
 
     
     /* Read and check command line input ******************/
+#ifdef PART_IN_CELL
     if(argc<3 && rank==0){
       fprintf(stderr,"The correct usage is:\n");
-      fprintf(stderr,"  ./EMOOPIC <inputfile> <1-quicksort 2-counting>\n");
+      fprintf(stderr,"  ./EMOOPIC <inputfile> <0- standard depo 1-vec depo>\n");
 #if USE_MPI
       MPI_Abort(MPI_COMM_WORLD,1);
 #else
       exit(1);
 #endif 
+#else
+    if(argc<4 && rank==0){
+      fprintf(stderr,"The correct usage is:\n");
+      fprintf(stderr,"  ./EMOOPIC <inputfile> <0- standard depo 1-vec depo> <1-quicksort 2-counting>\n");
+#endif
     }
 
-    sort=atoi(argv[2]);
+
+    useVecDeposition=atoi(argv[2]);
+    
+#ifndef PART_IN_CELL
+    sort=atoi(argv[3]);
+#endif
 
     double CFL = 1.0;
 
+#ifdef PART_IN_CELL
     if(argc==4) CFL = atof(argv[3]);
+#else
+    if(argc==5) CFL = atof(argv[4]);
+#endif
     /* Read and broadcast input file **********************/
     Input *input =  new Input();
     // Master read input file 
@@ -168,7 +183,7 @@ int main(int argc, char *argv[]){
 
     // Deposit charge and current from particles to grid
     if(restart==0 && strcmp(input_info->fields_init,"poisson")==0){
-        part_handler->depositRhoJ(grid,true,domain,input_info);
+        part_handler->depositRhoJ(grid);
 #if USE_MPI
         MPI_Barrier(MPI_COMM_WORLD);
 #endif
@@ -260,7 +275,7 @@ int main(int argc, char *argv[]){
 
        // only deposit particles in physical cells
     stopwatch(0);
-       part_handler->depositRhoJ(grid,true,domain,input_info);
+       part_handler->depositRhoJ(grid);
 
 
     stopwatch(1);

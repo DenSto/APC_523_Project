@@ -1,8 +1,12 @@
 #ifndef PARTICLE_UTILS_HPP
 #define PARTICLE_UTILS_HPP
 
+#include <stdlib.h>
 #include "particle.hpp"
 #include "../grid/grid.hpp"
+#include "../globals.hpp"
+
+#define LVEC 8
 
 /*! Function to use are a comparator in std::sort for std::vec<Particle>
 * Idea: Particle is sorted by outer index first 
@@ -19,53 +23,36 @@ class Particle_Compare {
   public:
   Particle_Compare(Grid* grid)  
   {
-    idx_ = grid->getidx();
-    idy_ = grid->getidy();
-    idz_ = grid->getidz();
-
-    x0_ = grid->getx0();
-    y0_ = grid->gety0();
-    z0_ = grid->getz0();
+    grid->getInvSpacing(idx_);
+    grid->getL0(x0_);
   }
 
   bool operator()(Particle const a, Particle const b) const {
 // Sort by individual i,j,k
     int na,nb;  
 
-    na = (int)((a.x[0] - x0_)*idx_);
-    nb = (int)((b.x[0] - x0_)*idx_);
+    na = (int)((a.x[0] - x0_[0])*idx_[0]);
+    nb = (int)((b.x[0] - x0_[0])*idx_[0]);
     if(na < nb) return 0;
     if(na > nb) return 1;
 
-    na = (int)((a.x[1] - y0_)*idy_);
-    nb = (int)((b.x[1] - y0_)*idy_);
+    na = (int)((a.x[1] - x0_[1])*idx_[1]);
+    nb = (int)((b.x[1] - x0_[1])*idx_[1]);
     if(na < nb) return 0;
     if(na > nb) return 1;
 
-    na = (int)((a.x[2] - z0_)*idz_);
-    nb = (int)((b.x[2] - z0_)*idz_);
+    na = (int)((a.x[2] - x0_[2])*idx_[2]);
+    nb = (int)((b.x[2] - x0_[2])*idx_[2]);
     if(na <= nb) return 0;
     if(na > nb)  return 1;
 
     return 0;
-
-// Sort by cell ID (probably overkill)
-/*
-    int id1 = grid_->getCellID(a.x[0],a.x[1],a.x[2]);
-    int id2 = grid_->getCellID(b.x[0],b.x[1],b.x[2]);
-
-    // if all indices are equal, return 0;
-    if(id1 <= id2)
-      return 0;
-    else
-      return 1;
-*/
   }
 
   private:
   
-    double idx_,idy_,idz_;
-    double x0_,y0_,z0_;
+    double idx_[3];
+    double x0_[3];
 };
 
 
@@ -181,5 +168,140 @@ inline void interpolateFields(Couple cp, double weight[3][3][3],Field_part *fiel
   field->b1 *= iw;
   field->b2 *= iw;
   field->b3 *= iw;
+}
+
+
+
+inline void depositRho(Grid* grid, std::vector<Particle>* nparts){
+
+  static double* rhocells;
+
+  int nghost = grid->getGhost();
+  double idx[3];  grid->getInvSpacing(idx);
+  int nxyz[3]; grid->getnxyz(nxyz);
+  double L0[3]; grid->getL0(L0);
+
+  double*** rho = grid->getRho();
+
+  double ww, wwx, wwy,wwz;
+  double x,y,z,invvol,q, wq0, wq, sxy, syy0, syy1, syy2, sxx0, sxx1, sxx2;
+  double xint,yint,zint, xintsq,yintsq,zintsq;
+  double sz0[LVEC], sz1[LVEC], sz2[LVEC];
+  int ICELL[LVEC];
+
+  double ww0[8*LVEC], www[LVEC*8];
+
+  int j,k,l,ix,iy,iz,ic,n,nn,nv;
+  int ncz, ncyz;
+  long ip;
+
+
+  invvol = idx[0]*idx[1]*idx[2];
+
+  // need at least one ghost zone for scheme to make sense (so one ghost on each side)
+  int ncells = nxyz[0]*nxyz[1]*nxyz[2];
+  int ncellsTot = (nxyz[0]+2)*nxyz[1]*nxyz[2];
+
+  if(rhocells == NULL) rhocells = (double*) malloc(sizeof(double)*ncellsTot*8);
+  for(int i = 0; i < ncellsTot*8; i++) rhocells[i] = 0.0;
+
+  ncz = nxyz[2] + 2;
+  ncyz = ncz*nxyz[1];
+
+  
+#ifndef PART_IN_CELL
+  ncells = 1;
+#endif
+
+  for(int i = 0; i < LVEC*8; i++) ww0[i] = 0.0;
+    
+  for(int iter = 0; iter< ncells; iter++ ){
+    long np = nparts[iter].size();
+
+    for(ip = 0; ip < np; ip += LVEC){
+      for(n = 0; n < MIN(LVEC,np-ip); n++){
+        nn= ip + n;
+        Particle p = nparts[iter][nn];
+        //wq0 = p.q*invvol;
+        x = (p.x[0]-L0[0])*idx[0];
+        y = (p.x[1]-L0[0])*idx[1];
+        z = (p.x[2]-L0[2])*idx[2];
+
+        j = (int)(x + 100000.0) - 100000;
+        k = (int)(y + 100000.0) - 100000;
+        l = (int)(z + 100000.0) - 100000;
+        
+        ICELL[n]= (1+l) + k*ncz + j*ncyz;
+
+        xint = x-j;
+        yint = y-k;
+        zint = z-l;
+        xintsq=SQR(xint);
+        yintsq=SQR(yint);
+        zintsq=SQR(zint);
+
+        syy0  =0.5*SQR(0.5 - yint);
+        syy1  =(0.75-yintsq);
+        syy2  =0.5*SQR(0.5+yint);
+        sxx0  =0.5*SQR(0.5-xint);
+        sxx1  =(0.75-xintsq);
+        sxx2  =0.5*SQR(0.5+xint);
+        sz0[n]=0.5*SQR(0.5-zint);
+        sz1[n]=(0.75-zintsq);
+        sz2[n]=0.5*SQR(0.5+zint);
+        www[8*n + 0] = syy0*sxx0;
+        www[8*n + 1] = syy1*sxx0;
+        www[8*n + 2] = syy2*sxx0;
+        www[8*n + 3] = syy0*sxx1;
+        www[8*n + 4] = syy2*sxx1;
+        www[8*n + 5] = syy0*sxx2;
+        www[8*n + 6] = syy1*sxx2;
+        www[8*n + 7] = syy2*sxx2;
+        sxy=syy1*sxx1;
+        ww0[8*n + 0]=sxy*sz0[n];
+        ww0[8*n + 1]=sxy*sz1[n];
+        ww0[8*n + 2]=sxy*sz2[n];
+        for(nv = 0; nv < 8; nv++){
+          wq0+= www[8*n + nv];
+          wq0+= ww0[8*n + nv];
+        }
+        for(nv = 0; nv < 8; nv++){
+          www[8*n + nv] /= wq0;
+          ww0[8*n + nv] /= wq0;
+        }
+      }
+      j += nghost; k += nghost; l += nghost;
+
+      for(n = 0; n < MIN(LVEC,np-ip); n++){
+#pragma simd
+        for(nv = 0; nv < 8; nv++){
+          ww=www[8*n + nv];
+          rhocells[8*(ICELL[n]-1) + nv] += ww*sz0[n];
+          rhocells[8*(ICELL[n]  ) + nv] += ww*sz1[n];
+          rhocells[8*(ICELL[n]  ) + nv] += ww*sz2[n];
+        }
+        for(nv = -1; nv <= 1; nv++){
+            rho[j][k][l+nv] += ww0[8*n + nv + 1];
+        }
+      }
+    }
+  }
+  // REDUCTION OVER ENTIRE GRID
+  for(ix = nghost; ix < nghost + nxyz[0] ; ix++){
+    for(iy = nghost; iy < nghost + nxyz[1]; iy++){
+#pragma simd
+      for(iz = nghost - 1; iz < nghost + nxyz[2] + 1; iz++){
+        ic=iz+(iy-nghost)*ncz+(ix-nghost)*ncyz;
+        rho[ix-1][iy-1][iz] += rhocells[8*ic + 0];
+        rho[ix-1][iy][iz]   += rhocells[8*ic + 1];
+        rho[ix-1][iy+1][iz] += rhocells[8*ic + 2];
+        rho[ix][iy-1][iz]   += rhocells[8*ic + 3];
+        rho[ix][iy+1][iz]   += rhocells[8*ic + 4];
+        rho[ix+1][iy-1][iz] += rhocells[8*ic + 5];
+        rho[ix+1][iy][iz]   += rhocells[8*ic + 6];
+        rho[ix+1][iy+1][iz] += rhocells[8*ic + 7];
+      }
+    }
+  } 
 }
 #endif

@@ -23,12 +23,13 @@ Grid::Grid(int *nxyz, int nGhosts, double *xyz0, double *Lxyz):
     idy_(1.0/dy_),
     idz_(1.0/dz_)
 {
-  Ex_=new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
-  Ey_=new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
-  Ez_=new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
-  Bx_=new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
-  By_=new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
-  Bz_=new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
+  Ex_ =new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
+  Ey_ =new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
+  Ez_ =new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
+  Bx_ =new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
+  By_ =new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
+  Bz_ =new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
+  rho_=new_contiguous_3dArray<double>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
   pp_=new_contiguous_3dArray<PartProp>(nx_ + 2*nGhosts_, ny_ + 2*nGhosts_, nz_ + 2*nGhosts_);    
 }
 
