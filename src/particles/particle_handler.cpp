@@ -236,6 +236,9 @@ void Particle_Handler::depositRhoJ(Grid *grid){
 
   int pID, cellID = -1;
 
+  double ***rho = grid->getRho();
+  int nghost = grid->getGhost();
+
   Couple cp;
 
 
@@ -260,14 +263,17 @@ void Particle_Handler::depositRhoJ(Grid *grid){
 
       getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
 
+      double q = p->q;
       for( int i = 0; i < 3; i++){
         for( int j = 0; j < 3; j++){
+#pragma simd
           for( int k = 0; k < 3; k++){
-            cur.d = p->m*weight[i][j][k];
+            rho[is +nghost + i][js + nghost + j][ks + nghost + k] += q*weight[i][j][k];	    
+  //        cur.d = p->m*weight[i][j][k];
   //        cur.jx = p->q*p->v[0]*weight[i][j][k];
   //        cur.jy = p->q*p->v[1]*weight[i][j][k];
   //        cur.jz = p->q*p->v[2]*weight[i][j][k];
-            grid->addPartProp(is + i, js + j, ks + k, cur);
+  //        grid->addPartProp(is + i, js + j, ks + k, cur);
           }
         }
       }
