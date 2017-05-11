@@ -39,9 +39,8 @@
 #endif
 
 
-static void stopwatch(short lap){
+static void stopwatch(short lap, FILE* fp){
   static struct timeval tv_prev, tv_curr;
-  static FILE *fp = fopen("timing.dat","w");
   static short init = 1;
 
   assert(fp != NULL);
@@ -125,6 +124,21 @@ int main(int argc, char *argv[]){
 #else
     if(argc==5) CFL = atof(argv[4]);
 #endif
+
+    char fname[50];
+#ifdef VECTORIZE
+    const char* vec = "_vec";
+#else
+    const char* vec = "";
+#endif
+
+#ifdef PART_IN_CELL
+    sprintf(fname,"PIC_dep%d%s.dat",useVecDeposition,vec);
+#else
+    sprintf(fname,"PL_sort%d_dep%d%s.dat",sort,useVecDeposition,vec);
+#endif
+    static FILE *timer = fopen(fname,"w");
+
     /* Read and broadcast input file **********************/
     Input *input =  new Input();
     // Master read input file 
@@ -220,7 +234,7 @@ int main(int argc, char *argv[]){
     std::string inputname = argv[1];
     std::string dir = inputname.substr(0,inputname.find_last_of('/')+1);
 
-    stopwatch(0);
+    stopwatch(0,timer);
 
     /***************************************************************************/
     /* Advance time step                                                       */
@@ -253,32 +267,32 @@ int main(int argc, char *argv[]){
        }
 #endif
 		
-    stopwatch(0);
+    stopwatch(0,timer);
        // Interpolate fields from grid to particle
        part_handler->InterpolateEB(grid);
 
-    stopwatch(0);
+    stopwatch(0,timer);
        /* push particles ***********************/
        part_handler->Push(dt_phys);
 
        // Pass particle across MPI boundaries, or implement physical boundary conditions
        // All particles are in physical cells, no particle lives in ghost cell
 #ifdef PART_IN_CELL
-    stopwatch(0);
+    stopwatch(0,timer);
        part_handler->updateCellLists(grid,0);
 #endif
-    stopwatch(0);
+    stopwatch(0,timer);
        part_handler->executeParticleBoundaryConditions(grid);
 
        // remove any particles left in the ghost cells
        part_handler->clearGhosts();
 
        // only deposit particles in physical cells
-    stopwatch(0);
+    stopwatch(0,timer);
        part_handler->depositRhoJ(grid);
 
 
-    stopwatch(1);
+    stopwatch(1,timer);
        time_phys += dt_phys;
 
        part_handler->outputParticles(dir.c_str(),ti+1,input_info); 
@@ -320,5 +334,6 @@ int main(int argc, char *argv[]){
 #if USE_MPI
 	MPI_Finalize();
 #endif
+    fclose(timer);
 
 }
