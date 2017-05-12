@@ -101,13 +101,13 @@ int main(int argc, char *argv[]){
 #if USE_MPI
       MPI_Abort(MPI_COMM_WORLD,1);
 #else
-      exit(1);
 #endif 
 #else
     if(argc<4 && rank==0){
       fprintf(stderr,"The correct usage is:\n");
       fprintf(stderr,"  ./EMOOPIC <inputfile> <0- standard depo 1-vec depo> <1-quicksort 2-counting>\n");
 #endif
+      exit(1);
     }
 
 

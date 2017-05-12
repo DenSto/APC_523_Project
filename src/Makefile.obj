@@ -21,5 +21,6 @@ BOUNDARYOBJ = $(addprefix ./boundaries/, $(BC) \
 
 OBJ = $(IOOBJ) $(DOMOBJ) $(UTILSOBJ) $(PUSHOBJ) $(BOUNDARYOBJ) $(GRIDOBJ) $(PARTOBJ) main.o
 OBJTEST = $(IOOBJ) $(DOMOBJ) $(UTILSOBJ) $(PUSHOBJ) $(BOUNDARYOBJ) $(GRIDOBJ) $(PARTOBJ) 
-OBJ_PAR = $(OBJ:.o=_par.o)
 OBJ_PIC = $(OBJ:.o=_pic.o)
+OBJ_VEC = $(OBJ:.o=_vec.o)
+OBJ_PIC_VEC = $(OBJ:.o=_pic_vec.o)

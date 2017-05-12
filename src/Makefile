@@ -3,8 +3,9 @@ MPICC = mpic++
 MPIFLAGS = -DUSE_MPI=0
 
 CFLAGS= -g  -Wall 
-CFLAGS= -O3 -ipo -xhost -qopt-report=5 -qopt-report-phase=vec -xCORE-AVX2
-#CFLAGS= -O3
+CFLAGS= -O3
+VECFLAGS= -O3 -ipo -xhost -qopt-report=5 -qopt-report-phase=vec -xCORE-AVX2 -DVECTORIZE
+
 
 include Makefile.obj
 
@@ -15,14 +16,14 @@ LCONFIG_INCL = $(LCONFIG_DIR)/include
 LCONFIG_LIB = $(LCONFIG_DIR)/lib/libconfig++.a
 
 LIBS = $(LCONFIG_LIB)
-LIBS_PAR = $(LCONFIG_LIB)
 LIBS_PIC = $(LCONFIG_LIB)
 
 PROGRAM = EMOOPIC
 PROGRAM_PIC = EMOOPIC_PIC
-PROGRAM_PAR = $(PROGRAM)_par
+PROGRAM_VEC = $(PROGRAM)_VEC
+PROGRAM_PIC_VEC = $(PROGRAM_PIC)_VEC
 
-all: $(PROGRAM) $(PROGRAM_PIC)
+all: $(PROGRAM) $(PROGRAM_PIC) $(PROGRAM_VEC) $(PROGRAM_PIC_VEC)
 
 $(PROGRAM): $(OBJ) $(LIBS)
 	$(CC) -o $@ $^ $(CFLAGS) -lm -lz -ldl 
@@ -30,17 +31,24 @@ $(PROGRAM): $(OBJ) $(LIBS)
 $(PROGRAM_PIC): $(OBJ_PIC) $(LIBS_PIC)
 	$(CC) -o $@ $^ $(CFLAGS) -lm -lz -ldl -DPART_IN_CELL
 
-$(PROGRAM_PAR): $(OBJ_PAR) $(LIBS_PAR)
-	$(MPICC) -o $@ $^ $(CFLAGS) -lm -lz -ldl $(MPIFLAGS)
+$(PROGRAM_VEC): $(OBJ_VEC) $(LIBS)
+	$(CC) -o $@ $^ $(VECFLAGS) -lm -lz -ldl
+
+$(PROGRAM_PIC_VEC): $(OBJ_PIC_VEC) $(LIBS_PIC)
+	$(CC) -o $@ $^ $(VECFLAGS) -lm -lz -ldl -DPART_IN_CELL
 
 %.o: %.cpp $(LIBS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-%_par.o : %.cpp $(LIBS_PAR)
-	$(MPICC) -c -o $@ $< $(CFLAGS) $(MPIFLAGS) 
-
 %_pic.o : %.cpp $(LIBS_PIC)
 	$(CC) -c -o $@ $< $(CFLAGS) -DPART_IN_CELL
+	
+%_pic_vec.o : %.cpp $(LIBS_PIC)
+	$(CC) -c -o $@ $< $(VECFLAGS) -DPART_IN_CELL
+
+%_vec.o : %.cpp $(LIBS)
+	$(CC) -c -o $@ $< $(VECFLAGS)
+
 
 $(LCONFIG_LIB):
 	cd ..; \
