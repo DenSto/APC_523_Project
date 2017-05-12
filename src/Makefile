@@ -60,7 +60,7 @@ $(LCONFIG_LIB):
 	cd $(SRCDIR)
 
 clean:
-	rm -f $(PROGRAM) $(PROGRAM_PAR) $(PROGRAM_PIC) $(OBJ) $(OBJ_PAR) $(OBJ_PIC) .depend
+	rm -f $(PROGRAM) $(PROGRAM_VEC) $(PROGRAM_PIC) $(PROGRAM_VEC_PIC) $(OBJ) $(OBJ_VEC) $(OBJ_PIC) $(OBJ_PIC_VEC) .depend
 
 fullclean: clean
 	rm -rf ../libconfig-1.5
