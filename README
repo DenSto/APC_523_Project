@@ -1,3 +1,38 @@
+Pruned version of EMOOPIC
+
+To build, type:
+
+>make
+
+Some of these make options need the intel compilers.  Individual options are
+
+>make EMOOPIC
+>make EMOOPIC_PIC
+>make EMOOPIC_VEC
+>make EMOOPIC_PIC_VEC
+
+The last two requiring the Intel compilers.  Included in the src directory is a script doit.sh that
+runs all test cases used in the report, and outputs various .dat files containing the timing of
+various routines. These .dat files have headers which explains the meaning of every column.
+
+
+To run EMOOPIC(_VEC), type
+
+>EMOOPIC <filename> <deposition flag> <sorting flag>
+
+The file input.txt is included in the src direction. This contains the test problem uses in the report. 
+The deposition flag can be either
+
+0 - Standard deposition
+1 - Deposition proposed by Vincenti et al. 2016
+
+The sorting flag can be either
+
+0 - Quicksork
+1 - Counting Sort (much faster)
+
+Arguments are similar for EMOOPIC_PIC, though the sorting flag is not used.
+
 FIXES
 - better performance on Boris Push
 - UpdateCell cost cancelled by Boundary savings
