@@ -44,6 +44,9 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
 
 #ifdef PART_IN_CELL
   parts_ = new std::vector<Particle>[ncell_+1];
+#else
+  pa_= (int*) malloc(sizeof(int) *(ncell_+1));
+  pa_save_ = (int*) malloc(sizeof(int) *( ncell_ +1));
 #endif
 
   int nspec      = input_info->nspecies;
@@ -52,8 +55,6 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
   double *charge = input_info->charge_ratio;
   double *dens   = input_info->dens_frac; 
 
-  pa_= (int*) malloc(sizeof(int) *(ncell_+1));
-  pa_save_ = (int*) malloc(sizeof(int) *( ncell_ +1));
 
   if(restart==0){// initial run
     if(rank_MPI==0)printf("    Loading random particles from distribution...\n");

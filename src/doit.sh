@@ -1,0 +1,1 @@
+./EMOOPIC input.txt

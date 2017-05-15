@@ -49,9 +49,9 @@ static void stopwatch(short lap, FILE* fp){
     init = 0;
     gettimeofday(&tv_prev,NULL);
 #ifdef PART_IN_CELL
-    fprintf(fp,"#[1]Output  [2]Interp [3]Push [4]Cell [5]Bound [6]Deposit\n");
+    fprintf(fp,"#[1]Output  [2]Interp [3]Push   [4]Cell [5]Bound [6]Deposit\n");
 #else
-    fprintf(fp,"#[1]Output  [2]Interp [3]Push [5]Bound [6]Deposit\n");
+    fprintf(fp,"#[1]Output  [2]Sort   [3]Interp [4]Push [5]Bound [6]Deposit\n");
 #endif
     return;
   }
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
 #ifdef PART_IN_CELL
     if(argc<3 && rank==0){
       fprintf(stderr,"The correct usage is:\n");
-      fprintf(stderr,"  ./EMOOPIC <inputfile> <0- standard depo 1-vec depo>\n");
+      fprintf(stderr,"%s <inputfile> <0- standard depo 1-vec depo>\n",argv[0]);
 #if USE_MPI
       MPI_Abort(MPI_COMM_WORLD,1);
 #else
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]){
 #else
     if(argc<4 && rank==0){
       fprintf(stderr,"The correct usage is:\n");
-      fprintf(stderr,"  ./EMOOPIC <inputfile> <0- standard depo 1-vec depo> <1-quicksort 2-counting>\n");
+      fprintf(stderr,"%s <inputfile> <0- standard depo 1-vec depo> <1-quicksort 2-counting>\n",argv[0]);
 #endif
       exit(1);
     }
@@ -251,6 +251,7 @@ int main(int argc, char *argv[]){
 
 
 #ifndef PART_IN_CELL
+    stopwatch(0,timer);
        if(input_info->nstep_sort > 0 && ti % input_info->nstep_sort == 0){
          switch(sort){
           case 0 : break;
