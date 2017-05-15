@@ -284,23 +284,25 @@ void Particle_Handler::depositRhoJ(Grid *grid){
   for (long ip=0; ip<np_; ip++) {
     int is,js,ks;
     int ic,jc,kc;
-    assert(!parts_[ip].isGhost);
+//    assert(!parts_[ip].isGhost);
   
     //Get position of particle.
     pos[0] = parts_[ip].x[0];
     pos[1] = parts_[ip].x[1];
     pos[2] = parts_[ip].x[2];
+    double q = parts_[ip].q;
 
     getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
 
     for( int i = 0; i < 3; i++){
       for( int j = 0; j < 3; j++){
         for( int k = 0; k < 3; k++){
-          cur.d = parts_[ip].m*weight[i][j][k];
-          cur.jx = parts_[ip].q*parts_[ip].v[0]*weight[i][j][k];
-          cur.jy = parts_[ip].q*parts_[ip].v[1]*weight[i][j][k];
-          cur.jz = parts_[ip].q*parts_[ip].v[2]*weight[i][j][k];
-          grid->addPartProp(is + i, js + j, ks + k, cur);
+           rho[is +nghost + i][js + nghost + j][ks + nghost + k] += q*weight[i][j][k];	    
+           // cur.d = parts_[ip].m*weight[i][j][k];
+           // cur.jx = parts_[ip].q*parts_[ip].v[0]*weight[i][j][k];
+           // cur.jy = parts_[ip].q*parts_[ip].v[1]*weight[i][j][k];
+           // cur.jz = parts_[ip].q*parts_[ip].v[2]*weight[i][j][k];
+           //  grid->addPartProp(is + i, js + j, ks + k, cur);
         }
       }
     }
