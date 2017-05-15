@@ -3,7 +3,7 @@ MPICC = mpic++
 MPIFLAGS = -DUSE_MPI=0
 
 CFLAGS= -g  -Wall 
-CFLAGS= -O3
+CFLAGS= -O3 -no-vec -no-simd
 VECFLAGS= -O3 -ipo -xhost -qopt-report=5 -qopt-report-phase=vec -xCORE-AVX2 -DVECTORIZE
 
 

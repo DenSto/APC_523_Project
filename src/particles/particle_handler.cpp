@@ -255,16 +255,16 @@ void Particle_Handler::depositRhoJ(Grid *grid){
     for (long ip=0; ip< size; ip++) {
       int is,js,ks;
       int ic,jc,kc;
-      Particle *p = &parts_[n][ip];
+ //     Particle *p = &parts_[n][ip];
   
       //Get position of particle.
-      pos[0] = p->x[0];
-      pos[1] = p->x[1];
-      pos[2] = p->x[2];
+      pos[0] = parts_[n][ip].x[0];
+      pos[1] = parts_[n][ip].x[1];
+      pos[2] = parts_[n][ip].x[2];
+      double q = parts_[n][ip].q;
 
       getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
 
-      double q = p->q;
       for( int i = 0; i < 3; i++){
         for( int j = 0; j < 3; j++){
 #pragma simd

@@ -42,6 +42,7 @@
 static void stopwatch(short lap, FILE* fp){
   static struct timeval tv_prev, tv_curr;
   static short init = 1;
+  static double tot = 0.0;
 
   assert(fp != NULL);
 
@@ -49,9 +50,9 @@ static void stopwatch(short lap, FILE* fp){
     init = 0;
     gettimeofday(&tv_prev,NULL);
 #ifdef PART_IN_CELL
-    fprintf(fp,"#[1]Output  [2]Interp [3]Push   [4]Cell [5]Bound [6]Deposit\n");
+    fprintf(fp,"#[1]Output  [2]Interp [3]Push   [4]Cell [5]Bound [6]Deposit [7]Total\n");
 #else
-    fprintf(fp,"#[1]Output  [2]Sort   [3]Interp [4]Push [5]Bound [6]Deposit\n");
+    fprintf(fp,"#[1]Output  [2]Sort   [3]Interp [4]Push [5]Bound [6]Deposit [7]Total\n");
 #endif
     return;
   }
@@ -60,10 +61,12 @@ static void stopwatch(short lap, FILE* fp){
   double time = (double)(tv_curr.tv_sec - tv_prev.tv_sec) +
       		       1.0e-6*(double)(tv_curr.tv_usec - tv_prev.tv_usec);
   tv_prev = tv_curr;
+  tot += time;
   fprintf(fp,"%f  ", time);
   if(lap){ 
-    fprintf(fp,"\n");
+    fprintf(fp,"%f \n",tot);
     fflush(fp);
+    tot = 0.0;
   }
   return;
 }
@@ -138,6 +141,7 @@ int main(int argc, char *argv[]){
     sprintf(fname,"PL_sort%d_dep%d%s.dat",sort,useVecDeposition,vec);
 #endif
     static FILE *timer = fopen(fname,"w");
+    fprintf(timer,"# %s \n",fname);
 
     /* Read and broadcast input file **********************/
     Input *input =  new Input();
