@@ -38,19 +38,27 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
   int restart = input_info->restart;
   double* L = domain->getLxyz();
   double* x0 = domain->getxyz0();
+  double idx[3]; grid->getInvSpacing(idx);
 
   int* n= domain->getnxyz();
-  ncell_ = n[0]*n[1]*n[2];
 
-#ifdef PART_IN_CELL
-  parts_ = new std::vector<Particle>[ncell_+1];
-#else
-  pa_= (int*) malloc(sizeof(int) *(ncell_+1));
-  pa_save_ = (int*) malloc(sizeof(int) *( ncell_ +1));
-#endif
+  int cpt = input_info->cellPerTile;
 
-  int nspec      = input_info->nspecies;
-  int npart      = input_info->nparticles_tot*ncell_;
+  for(int i = 0; i < 3; i++){
+    cpt_[i] = cpt;
+    idx_[i] = idx[i] / cpt;
+    x0_[i] = x0[i];
+    xMax_[i] = x0_[i] + L[i];
+    nT_[i] = (int)ceil(((double)n[i])/((double)cpt));
+  }
+  nTiles_ = nT_[0]*nT_[1]*nT_[2];
+
+  parts_ = new std::vector<Particle>[nTiles_+1];
+
+  pa_= (int*) malloc(sizeof(int) *(cpt*cpt*cpt  +1));
+  pa_save_ = (int*) malloc(sizeof(int) *( cpt*cpt*cpt + 1));
+
+  int npart      = input_info->nparticles_tot*n[0]*n[1]*n[2];
   double *mass   = input_info->mass_ratio;
   double *charge = input_info->charge_ratio;
   double *dens   = input_info->dens_frac; 
@@ -85,12 +93,8 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
       p.my_id=ip;
       p.initRank=rank_MPI;
 
-#ifdef PART_IN_CELL
-      int id = grid->getCellID(p.x[0],p.x[1],p.x[2]);
+      int id = getTileID(p.x[0],p.x[1],p.x[2]);
       parts_[id].push_back(p);
-#else
-      parts_.push_back(p);
-#endif
       np_++;
     } 
   } else {
@@ -104,19 +108,15 @@ void Particle_Handler::Load(Input_Info_t *input_info, Domain* domain, Grid* grid
     p.v[0]=0.01;
     p.v[1]=0.001;
     p.v[2]=0.001;
-#ifdef PART_IN_CELL
-    int id = grid->getCellID(p.x[0],p.x[1],p.x[2]);
+    int id = getTileID(p.x[0],p.x[1],p.x[2]);
     parts_[id].push_back(p);
-#else
-    parts_.push_back(p);
-#endif
     np_++;
   }
+  printf("N Particles %ld\n",np_);
 }
 
 void Particle_Handler::Push(double dt){
-#ifdef PART_IN_CELL
-  for(long i = 0; i < ncell_; i++){
+  for(long i = 0; i < nTiles_; i++){
     long size = (long) parts_[i].size();
 #pragma simd
     for(long ip=0;ip < size; ip++){
@@ -132,28 +132,10 @@ void Particle_Handler::Push(double dt){
       parts_[i][ip].v[2] = ret[5];
     }
   }
-#else
-  for(long ip=0;ip<np_;ip++){
-    double qom = parts_[ip].q/parts_[ip].m;
-    double ret[6];
-    pusher_->Step(parts_[ip].x,parts_[ip].v,qom, parts_[ip].field,dt,ret);
-
-    parts_[ip].x[0] = ret[0];
-    parts_[ip].x[1] = ret[1];
-    parts_[ip].x[2] = ret[2];
-    parts_[ip].v[0] = ret[3];
-    parts_[ip].v[1] = ret[4];
-    parts_[ip].v[2] = ret[5];
-  }
-#endif
 }
 
 long Particle_Handler::nParticles(){
-#ifdef PART_IN_CELL
   return -1;
-#else
-  return np_;
-#endif
 }
 
 void Particle_Handler::incrementNParticles(int inc){
@@ -163,29 +145,22 @@ void Particle_Handler::incrementNParticles(int inc){
 }
 
 void Particle_Handler::InterpolateEB(Grid* grid){
-  int nxyz[3];
   double pos[3]; //Vector of position of particle.
   double icell[3]; //Vector of inverse lengths of unit cell.
   double L0[3]; //Vector of lengths of unit cell.
   double weight[3][3][3];
 
-  int pID, cellID = -1;
-
-  Couple cp;
 
   int is,js,ks;
   int ic,jc,kc;
 
   //Get lengths of grid cells.
-  grid->getnxyz(nxyz);
   grid->getInvSpacing(icell);
   grid->getL0(L0);
 
   //int count =0;
 
-#ifdef PART_IN_CELL
-  for (long j = 0; j < ncell_; j++){
-    grid->getCoupleID(j,&cp);
+  for (long j = 0; j < nTiles_; j++){
     long size = (long) parts_[j].size();
 #pragma vector
     for (long i=0; i < size; i++) {
@@ -195,62 +170,33 @@ void Particle_Handler::InterpolateEB(Grid* grid){
       pos[2] = parts_[j][i].x[2];
 
       getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
+      Couple cp;
+      grid->getCouple(is,js,ks,&cp);
       interpolateFields(&cp,weight,&parts_[j][i].field);
     }
   }
-#else
-  for (long i=0; i<np_; i++) {
-    assert(!parts_[i].isGhost);
-  
-    //Get position of particle.
-    pos[0] = parts_[i].x[0];
-    pos[1] = parts_[i].x[1];
-    pos[2] = parts_[i].x[2];
-
-    getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
-
-    pID = nxyz[1]*nxyz[2]*ic + nxyz[2]*jc + kc;
-    if(pID != cellID){
-      cellID=pID;
-      grid->getCouple(is,js,ks,&cp);
-    }
-    interpolateFields(&cp,weight,&parts_[i].field);
-  }
-#endif
 }
 
 void Particle_Handler::depositRhoJ(Grid *grid){
-  int nxyz[3];
   double pos[3]; //Vector of position of particle.
   double icell[3]; //Vector of inverse lengths of unit cell.
   double L0[3]; //Vector of lengths of unit cell.
   double weight[3][3][3];
 
   if(useVecDeposition){
-#ifdef PART_IN_CELL
     depositRho(grid,parts_);
-#else
-    depositRho(grid,&parts_);
-#endif
     return;
   }
 
-  int pID, cellID = -1;
 
   double ***rho = grid->getRho();
   int nghost = grid->getGhost();
-
-  Couple cp;
-
 
   //Get lengths of grid cells.
   grid->getInvSpacing(icell);
   grid->getL0(L0);
 
-  PartProp cur;
-
-#ifdef PART_IN_CELL
-  for (long n=0; n < ncell_ ; n++) {
+  for (long n=0; n < nTiles_ ; n++) {
     long size = (long) parts_[n].size();
     for (long ip=0; ip< size; ip++) {
       int is,js,ks;
@@ -270,44 +216,11 @@ void Particle_Handler::depositRhoJ(Grid *grid){
 #pragma simd
           for( int k = 0; k < 3; k++){
             rho[is +nghost + i][js + nghost + j][ks + nghost + k] += q*weight[i][j][k];	    
-  //        cur.d = p->m*weight[i][j][k];
-  //        cur.jx = p->q*p->v[0]*weight[i][j][k];
-  //        cur.jy = p->q*p->v[1]*weight[i][j][k];
-  //        cur.jz = p->q*p->v[2]*weight[i][j][k];
-  //        grid->addPartProp(is + i, js + j, ks + k, cur);
           }
         }
       }
     }
   }
-#else
-  for (long ip=0; ip<np_; ip++) {
-    int is,js,ks;
-    int ic,jc,kc;
-//    assert(!parts_[ip].isGhost);
-  
-    //Get position of particle.
-    pos[0] = parts_[ip].x[0];
-    pos[1] = parts_[ip].x[1];
-    pos[2] = parts_[ip].x[2];
-    double q = parts_[ip].q;
-
-    getwei_TSC(L0,icell,pos[0],pos[1],pos[2],weight,&is,&js,&ks,&ic,&jc,&kc);
-
-    for( int i = 0; i < 3; i++){
-      for( int j = 0; j < 3; j++){
-        for( int k = 0; k < 3; k++){
-           rho[is +nghost + i][js + nghost + j][ks + nghost + k] += q*weight[i][j][k];	    
-           // cur.d = parts_[ip].m*weight[i][j][k];
-           // cur.jx = parts_[ip].q*parts_[ip].v[0]*weight[i][j][k];
-           // cur.jy = parts_[ip].q*parts_[ip].v[1]*weight[i][j][k];
-           // cur.jz = parts_[ip].q*parts_[ip].v[2]*weight[i][j][k];
-           //  grid->addPartProp(is + i, js + j, ks + k, cur);
-        }
-      }
-    }
-  }
-#endif
 }
 
 //! Sort particles based on grid location. 
@@ -316,14 +229,12 @@ void Particle_Handler::depositRhoJ(Grid *grid){
  * This should be called often to ensure cache hits.  Should be emperically determined.
  */
 void Particle_Handler::SortParticles(Particle_Compare comp){
-#ifndef PART_IN_CELL
   if(debug>0 && rank_MPI == 0) fprintf(stderr,"Sorting Particles.\n");
-  std::sort(parts_.begin(),parts_.end(),comp);
-#endif
+  for(int i = 0; i < nTiles_; i++)
+    std::sort(parts_[i].begin(),parts_[i].end(),comp);
 }
 
 void Particle_Handler::CountingSortParticles(Grid* grid){
-#ifndef PART_IN_CELL
   long i,j,k,se;
   int cellid;
   double pos[3];
@@ -361,7 +272,7 @@ void Particle_Handler::CountingSortParticles(Grid* grid){
         pos[2] = in->x[2];
         cellid = grid->getCellID(pos[0],pos[1],pos[2]);
         out = &parts_[pa_[cellid]];
-    pa_[cellid]++;
+        pa_[cellid]++;
 
         if( out != stop){
           tmp1 = *out;
@@ -373,19 +284,17 @@ void Particle_Handler::CountingSortParticles(Grid* grid){
       } while( out != stop);
     }
   }
-#endif
 }
 
 
 double Particle_Handler::computeCFLTimestep(Grid* grid){
-  double maxV[3], dx[3];
+  double dx[3];
 
   double mindt = 1e20;
 
   double v;
   grid->getSpacing(dx);
-#ifdef PART_IN_CELL
-  for (int i= 0; i<ncell_; i++) {
+  for (int i= 0; i<nTiles_; i++) {
     long size = (long) parts_[i].size();
     for (int ip= 0; ip < size; ip++) {
       for(int j = 0; j < 3; j++){
@@ -396,16 +305,6 @@ double Particle_Handler::computeCFLTimestep(Grid* grid){
       } 
     }
   }
-#else
-  for (int i= 0; i<np_; i++) {
-    for(int j = 0; j < 3; j++){
-      v = parts_[i].v[j];
-      if(v*v > 0){
-        if(fabs(dx[j]/v) < mindt) mindt = fabs(dx[j]/v);
-      } 
-    }
-  }
-#endif
   return mindt;
 
 #if USE_MPI
@@ -418,33 +317,18 @@ double Particle_Handler::computeCFLTimestep(Grid* grid){
 
 //! Clear all ghost particles. Uses a swap-to-back and pop-last-element for speed.
 void Particle_Handler::clearGhosts(){
-#ifdef PART_IN_CELL
   long size = 0;
-  for(int i = 0; i < ncell_; i++) size += (long) parts_[i].size();
-  parts_[ncell_].clear();
-#else
-  int nghost = 0;
-  for(std::vector<Particle>::iterator iter = parts_.begin(); iter != parts_.end();){
-    if(iter->isGhost){
-      std::swap(*iter, parts_.back());
-      parts_.pop_back();
-      nghost +=1;
-    } else {
-      iter++;
-    }
-  }
-  assert((long)parts_.size() == np_);
-        if(debug>2)fprintf(stderr,"rank=%d: %d ghosts are cleared.\n",rank_MPI,nghost);
-#endif
+  for(int i = 0; i < nTiles_; i++) size += (long) parts_[i].size();
+  parts_[nTiles_].clear();
+  assert(size == np_);
 }
 
-#ifdef PART_IN_CELL
-void Particle_Handler::updateCellLists(Grid *grid,short justGhosts){
-  long i = justGhosts ? ncell_ : 0;
-  for(; i < ncell_ + 1; i++){
+void Particle_Handler::updateTiles(Grid *grid,short justGhosts){
+  long i = justGhosts ? nTiles_ : 0;
+  for(; i < nTiles_ + 1; i++){
     for(std::vector<Particle>::iterator iter = parts_[i].begin(); iter != parts_[i].end();){
-      long id = grid->getCellID_wGhost(iter->x[0],iter->x[1],iter->x[2]);
-      id = id < 0 ? ncell_ : id;
+      long id = getTileID_wGhost(iter->x[0],iter->x[1],iter->x[2]);
+      id = id < 0 ? nTiles_ : id;
       if(id != i){ // particle is not in it's cell anymore
         // swap pop
         Particle pt = *iter;
@@ -460,10 +344,9 @@ void Particle_Handler::updateCellLists(Grid *grid,short justGhosts){
 }
 
 void Particle_Handler::insertParticle(Particle p, long id){
-  long ind = id < 0 ? ncell_ : id;
+  long ind = id < 0 ? nTiles_ : id;
   parts_[ind].push_back(p);
 }
-#endif
 
 
 void Particle_Handler::executeParticleBoundaryConditions(Grid* grid){
@@ -471,13 +354,8 @@ void Particle_Handler::executeParticleBoundaryConditions(Grid* grid){
     // determine whether particles are ghost
         // place ghost particles
         // change the number of particles np_ in each domain
-#ifdef PART_IN_CELL
-    int inc = boundaries_[i]->computeParticleBCs(&parts_[ncell_]);
-    updateCellLists(grid,1);
-#else
-    int inc = boundaries_[i]->computeParticleBCs(&parts_);
-    incrementNParticles(inc);
-#endif
+    boundaries_[i]->computeParticleBCs(&parts_[nTiles_]);
+    updateTiles(grid,1);
   }
 }
 
@@ -505,8 +383,7 @@ void Particle_Handler::outputParticles(const char* basename,long step, Input_Inf
   if(init){
     init=false;
     //mkdir("./tracks", 0775); //create the particle directory
-#ifdef PART_IN_CELL
-    for(int i = 0; i < ncell_; i++){
+    for(int i = 0; i < nTiles_; i++){
       for(std::vector<Particle>::iterator iter = parts_[i].begin();iter!=parts_[i].end();++iter){
         if(iter->my_id < outputCount_){
           char fname[100];
@@ -517,17 +394,6 @@ void Particle_Handler::outputParticles(const char* basename,long step, Input_Inf
         }
       }
     }
-#else
-    for(std::vector<Particle>::iterator iter = parts_.begin();iter!=parts_.end();++iter){
-     if(iter->my_id < outputCount_){
-        char fname[100];
-        sprintf(fname,"%strack_%d_%ld.dat",basename,iter->initRank,iter->my_id);  
-        FILE *pout=fopen(fname,"w");
-        fprintf(pout,"[1] time [2] x [3] y [4] z  [5] vx   [6] vy   [7] vz\n");
-        fclose(pout);
-      }
-    }
-#endif
   }
 
   // cadence on i or t
@@ -550,8 +416,7 @@ void Particle_Handler::outputParticles(const char* basename,long step, Input_Inf
   }
   char fname[100];
   FILE *pout;
-#ifdef PART_IN_CELL
-  for(int i =0; i<ncell_;i++){
+  for(int i =0; i<nTiles_;i++){
     long size = (long) parts_[i].size();
     for (int ip= 0; ip < size; ip++) {
       Particle *iter = &parts_[i][ip];
@@ -567,20 +432,6 @@ void Particle_Handler::outputParticles(const char* basename,long step, Input_Inf
       }
     }
   }
-#else
-  for(std::vector<Particle>::iterator iter = parts_.begin();iter!=parts_.end();++iter){
-    if(iter->my_id < outputCount_){
-      sprintf(fname,"%strack_%d_%ld.dat",basename,iter->initRank,iter->my_id);  
-                        if(debug>1)fprintf(stderr,"    track file name %s\n",fname);
-      pout=fopen(fname,"a");
-      assert(pout != NULL);
-      fprintf(pout,"%e %.15e %.15e %.15e %.15e %.15e %.15e\n",t,
-          iter->x[0],iter->x[1],iter->x[2],
-          iter->v[0],iter->v[1],iter->v[2]);
-      fclose(pout);
-    }
-  }
-#endif
   if(debug)fprintf(stderr,"rank=%d: finish writing particle tracks!\n",rank_MPI);
 }
 #undef _USE_MATH_DEFINES

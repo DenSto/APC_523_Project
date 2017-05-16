@@ -29,10 +29,6 @@ typedef struct PartCouple{
   PartProp pp[3][3][3];
 } PartCouple;
 
-inline int intFloor(double x){
-  return (int)(x + 10000000) - 10000000;
-}
-
 class Grid {
 
 public:
@@ -59,6 +55,13 @@ public:
     return (ny_*nz_)*ix + nz_*iy + iz;
   }
 
+  inline int getCellIDalt(double x, double y, double z, int* n, double* idx){
+    int ix = intFloor((x - x0_) * idx[0]);
+    int iy = intFloor((y - y0_) * idx[1]);
+    int iz = intFloor((z - z0_) * idx[2]);
+    return (n[1]*n[2])*ix + n[2]*iy + iz;
+  }
+    
   void getCouple(int i, int j, int k, Couple* cp);
   void getCoupleID(long id,  Couple* cp);
 
@@ -86,11 +89,6 @@ public:
   double ***getRho() {return rho_;};
 
   void initializeFields(Input_Info_t* input);
-
-#ifdef PARTICLE_GRID
-  void pushParticle(Particle part);
-  void updateParticleLocation();
-#endif
 
 protected:
   double ***Ex_;
@@ -122,10 +120,6 @@ protected:
   double idx_;
   double idy_;
   double idz_;
-
-#ifdef PARTICLE_GRID
-  std::vector<Particle>* parts_;
-#endif
 
 };
 

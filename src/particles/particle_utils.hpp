@@ -183,8 +183,8 @@ inline void depositRho(Grid* grid, std::vector<Particle>* nparts){
 
   double*** rho = grid->getRho();
 
-  double ww, wwx, wwy,wwz;
-  double x,y,z,invvol,q, wq0, wq, sxy, syy0, syy1, syy2, sxx0, sxx1, sxx2;
+  double ww;
+  double x,y,z,invvol,wq0, sxy, syy0, syy1, syy2, sxx0, sxx1, sxx2;
   double xint,yint,zint, xintsq,yintsq,zintsq;
   double sz0[LVEC], sz1[LVEC], sz2[LVEC];
   int ICELL[LVEC];
@@ -197,6 +197,7 @@ inline void depositRho(Grid* grid, std::vector<Particle>* nparts){
 
 
   invvol = idx[0]*idx[1]*idx[2];
+  wq0 = 0;
 
   // need at least one ghost zone for scheme to make sense (so one ghost on each side)
   int ncells = nxyz[0]*nxyz[1]*nxyz[2];
@@ -221,7 +222,7 @@ inline void depositRho(Grid* grid, std::vector<Particle>* nparts){
     for(ip = 0; ip < np; ip += LVEC){
       for(n = 0; n < MIN(LVEC,np-ip); n++){
         nn= ip + n;
-        //wq0 = p.q*invvol;
+        wq0 = 0;
         x = (nparts[iter][nn].x[0]-L0[0])*idx[0];
         y = (nparts[iter][nn].x[1]-L0[0])*idx[1];
         z = (nparts[iter][nn].x[2]-L0[2])*idx[2];

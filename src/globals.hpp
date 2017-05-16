@@ -6,6 +6,11 @@
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 
+#define INTFLOOR 1000000
+inline int intFloor(double x){
+  return (int)(x + INTFLOOR) - INTFLOOR;
+}
+
 typedef struct vector_t{
 	double x1, x2, x3;
 }vector;

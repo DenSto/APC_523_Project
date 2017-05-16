@@ -44,17 +44,39 @@ public:
 
   void outputParticles(const char* basename, long nstep, Input_Info_t *input_info); //should be in its own class.
 
-#ifdef PART_IN_CELL
-  void updateCellLists(Grid* grid, short justGhosts);
+  void updateTiles(Grid* grid, short justGhosts);
   void insertParticle(Particle p,long id);
-#endif
+
+  inline int getTileID(double x, double y, double z){
+    int ix = intFloor((x - x0_[0]) * idx_[0]);
+    int iy = intFloor((y - x0_[1]) * idx_[1]);
+    int iz = intFloor((z - x0_[2]) * idx_[2]);
+    return (nT_[1]*nT_[2])*ix + nT_[2]*iy + iz;
+  }
+
+  inline int getTileID_wGhost(double x, double y, double z){
+    if(x < x0_[0] || x > xMax_[0] ) return -1;
+    if(y < x0_[1] || y > xMax_[1] ) return -2;
+    if(z < x0_[2] || z > xMax_[2] ) return -3;
+
+    int ix = intFloor((x - x0_[0]) * idx_[0]);
+    int iy = intFloor((y - x0_[1]) * idx_[1]);
+    int iz = intFloor((z - x0_[2]) * idx_[2]);
+    return (nT_[1]*nT_[2])*ix + nT_[2]*iy + iz;
+  }
 
 private:
   BC_Particle** boundaries_; /* Particle Boundary Conditions */
   Pusher* pusher_;
   int* pa_;
   int* pa_save_;
-  int ncell_;
+
+  int nTiles_;
+  int nT_[3];
+  int cpt_[3];
+  double idx_[3];
+  double x0_[3];
+  double xMax_[3];
 
 
    // Output parameters (should be in its own class)
@@ -64,11 +86,7 @@ private:
 //  int lz1,lz2;  // leading zeros for output filename
 
   long np_;                      /* total number of particles */
-#ifdef PART_IN_CELL
   std::vector<Particle>* parts_;   /* array of particle vectors, size of NCell */
-#else
-  std::vector<Particle> parts_;    /* Vector of particles */
-#endif
 
 };
 

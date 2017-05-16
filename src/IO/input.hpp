@@ -16,6 +16,8 @@ typedef struct {
     int nCell[NDIM]; /*! number of cells in each direction */
     int nProc[NDIM]; /*! number of processors to use in each direction */
 
+    int cellPerTile; /* how many cells per tile? */
+
     int nt; /*! number of time steps */
     int restart; /// How many previous runs?
                  /// restart = 0: initial run

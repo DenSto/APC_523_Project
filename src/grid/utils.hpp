@@ -45,7 +45,7 @@ void free_contiguous_3dArray(double ***array){
 */
 
 
-using namespace std; 
+//using namespace std; 
 
 template <typename T> 
 T*** new_contiguous_3dArray(int nx, int ny, int nz){

@@ -97,36 +97,19 @@ int main(int argc, char *argv[]){
 
     
     /* Read and check command line input ******************/
-#ifdef PART_IN_CELL
-    if(argc<3 && rank==0){
+    if(argc<5 && rank==0){
       fprintf(stderr,"The correct usage is:\n");
-      fprintf(stderr,"%s <inputfile> <0- standard depo 1-vec depo>\n",argv[0]);
-#if USE_MPI
-      MPI_Abort(MPI_COMM_WORLD,1);
-#else
-#endif 
-#else
-    if(argc<4 && rank==0){
-      fprintf(stderr,"The correct usage is:\n");
-      fprintf(stderr,"%s <inputfile> <0- standard depo 1-vec depo> <1-quicksort 2-counting>\n",argv[0]);
-#endif
+      fprintf(stderr,"%s <inputfile> <0- standard depo 1-vec depo> <1-quicksort 2-counting> <cells per tile>\n",argv[0]);
       exit(1);
     }
 
 
     useVecDeposition=atoi(argv[2]);
-    
-#ifndef PART_IN_CELL
     sort=atoi(argv[3]);
-#endif
+    int cpt = atof(argv[4]);
 
     double CFL = 1.0;
-
-#ifdef PART_IN_CELL
-    if(argc==4) CFL = atof(argv[3]);
-#else
-    if(argc==5) CFL = atof(argv[4]);
-#endif
+    if(argc==6) CFL = atof(argv[5]);
 
     char fname[50];
 #ifdef VECTORIZE
@@ -162,6 +145,7 @@ int main(int argc, char *argv[]){
     }
 
     Input_Info_t *input_info = input->getinfo();
+    input_info->cellPerTile = cpt;
 #if USE_MPI
     // Master broadcast input info
     if(rank==0)printf("Master broadcasting input infomation...\n");
@@ -282,10 +266,8 @@ int main(int argc, char *argv[]){
 
        // Pass particle across MPI boundaries, or implement physical boundary conditions
        // All particles are in physical cells, no particle lives in ghost cell
-#ifdef PART_IN_CELL
     stopwatch(0,timer);
-       part_handler->updateCellLists(grid,0);
-#endif
+    part_handler->updateTiles(grid,0);
     stopwatch(0,timer);
        part_handler->executeParticleBoundaryConditions(grid);
 

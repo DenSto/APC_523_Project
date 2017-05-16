@@ -14,7 +14,7 @@ void Boris::Step(double* x, double* v, double q_m, Field_part field, double dt, 
   double bx,by,bz,ex,ey,ez,bsqr;
   double tx,ty,tz,sx,sy,sz,tsqr;
   double x_new, y_new,z_new, vx_new, vy_new,vz_new;
-  double m,q,q_p;
+  double q_p;
 
 
 
