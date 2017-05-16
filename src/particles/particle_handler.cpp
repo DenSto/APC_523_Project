@@ -235,53 +235,55 @@ void Particle_Handler::SortParticles(Particle_Compare comp){
 }
 
 void Particle_Handler::CountingSortParticles(Grid* grid){
-  long i,j,k,se;
-  int cellid;
-  double pos[3];
+  for(n = 0; n < nTiles_; n++){
+    long i,j,k,se;
+    int cellid;
+    double pos[3];
 
-  Particle *in, *out, *stop, *tmp;
-  Particle tmp1;
-  tmp = &tmp1;
+    Particle *in, *out, *stop, *tmp;
+    Particle tmp1;
+    tmp = &tmp1;
 
-  for(i = 0; i < ncell_; i++){
-    pa_[i] = 0;
-  }
-  for (i= 0; i<np_; i++) {
-    pos[0] = parts_[i].x[0];
-    pos[1] = parts_[i].x[1];
-    pos[2] = parts_[i].x[2];
-    cellid = grid->getCellID(pos[0],pos[1],pos[2]);
-    pa_[cellid]++;  
-  }
-  for (i=k=0; i<=ncell_; i++) { 
-    j = pa_[i]; 
-    pa_save_[i] = pa_[i] = k; 
-    k+=j;
-  }
+    for(i = 0; i < ncell_; i++){
+      pa_[i] = 0;
+    }
+    for (i= 0; i<np_; i++) {
+      pos[0] = parts_[i].x[0];
+      pos[1] = parts_[i].x[1];
+      pos[2] = parts_[i].x[2];
+      cellid = grid->getCellID(pos[0],pos[1],pos[2]);
+      pa_[cellid]++;  
+    }
+    for (i=k=0; i<=ncell_; i++) { 
+      j = pa_[i]; 
+      pa_save_[i] = pa_[i] = k; 
+      k+=j;
+    }
 
-  i = 0;
+    i = 0;
 
-  while( i < ncell_){
-    if(pa_[i] >= pa_save_[i+1]) {
-      i++;
-    } else {
-      in = stop = &parts_[pa_[i]];
-      do{
-        pos[0] = in->x[0];
-        pos[1] = in->x[1];
-        pos[2] = in->x[2];
-        cellid = grid->getCellID(pos[0],pos[1],pos[2]);
-        out = &parts_[pa_[cellid]];
-        pa_[cellid]++;
+    while( i < ncell_){
+      if(pa_[i] >= pa_save_[i+1]) {
+        i++;
+      } else {
+        in = stop = &parts_[pa_[i]];
+        do{
+          pos[0] = in->x[0];
+          pos[1] = in->x[1];
+          pos[2] = in->x[2];
+          cellid = grid->getCellID(pos[0],pos[1],pos[2]);
+          out = &parts_[pa_[cellid]];
+          pa_[cellid]++;
 
-        if( out != stop){
-          tmp1 = *out;
-          *out = *in;
-          *in=tmp1;
-        } else if( out != in) {
-          *out=*in;
-        }
-      } while( out != stop);
+          if( out != stop){
+            tmp1 = *out;
+            *out = *in;
+            *in=tmp1;
+          } else if( out != in) {
+            *out=*in;
+          }
+        } while( out != stop);
+      }
     }
   }
 }
